@@ -1,33 +1,31 @@
 # pushd proof-of-concept
-
-clang \
+# export PYTHONPATH=../wasmapy
+/usr/local/Cellar/llvm@9/9.0.1_2/bin/clang \
     --target=wasm32-unknown-wasi \
     --sysroot wasi-libc/ \
-    -isysroot wasi-libc/ \
     -nostartfiles \
-    -Wl,--import-memory \
     -Wl,--no-entry \
     -Wl,--export-all \
-    -o tmp/pof.wasm \
     -fno-common \
     -Wall \
     -DNDEBUG -g -fwrapv -O3 \
     -DPy_LIMITED_API \
-    -DHPY_UNIVERSAL_ABI -I/Users/pprescod/code/open_source/hpy/venv/wheel_builder_universal/lib/python3.8/site-packages/hpy/devel/include \
+    -DHPY_UNIVERSAL_ABI \
+    -IPyUU/include \
     -I/Users/pprescod/code/open_source/hpy/venv/wheel_builder_universal/lib/python3.8/site-packages/hpy/devel/include \
-    -I/usr/local/include \
+    -I/Users/pprescod/code/open_source/hpy/venv/wheel_builder_universal/lib/python3.8/site-packages/hpy/devel/include \
     -I/Users/pprescod/code/open_source/hpy/hpy/universal/src \
+    -I./hpy/devel/include/universal/ \
+    -I./hpy/devel/include/ \
     -I/Users/pprescod/code/open_source/hpy/venv/wheel_builder_universal/include \
     -I/usr/local/Cellar/python@3.8/3.8.6_2/Frameworks/Python.framework/Versions/3.8/include/python3.8 \
-    ./proof-of-concept/pof.c hpy/devel/src/runtime/argparse.c ./proof-of-concept/PyUU.c\
-    -Wl,--allow-undefined-file=PyUU.syms
-
-python wasmplay.py
+    -Wl,--allow-undefined-file=PyUU.syms \
+    ./proof-of-concept/pof.c ./proof-of-concept/PyUU.c\
+    hpy/devel/src/runtime/argparse.c\
+    -o tmp/pof.wasm && python wasmplay.py
 # clang -Wno-unused-result -Wsign-compare -Wunreachable-code \
 #     --target=wasm32-unknown-wasi \
 #     -nostartfiles   \
-#     -fno-common \
-#     -Wl,--import-memory -Wl,--no-entry -Wl,--export-all  \
 #     -DNDEBUG -g -fwrapv -O3 \
 #     --sysroot ../wasi-libc/ \
 #     -Wall \

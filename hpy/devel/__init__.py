@@ -201,9 +201,14 @@ class build_hpy_ext_mixin:
         if ext.hpy_abi == 'cpython':
             ext.sources += self.hpydevel.get_ctx_sources()
             ext._hpy_needs_stub = False
-        if ext.hpy_abi == 'universal':
+        elif ext.hpy_abi == 'universal':
             ext.define_macros.append(('HPY_UNIVERSAL_ABI', None))
             ext._hpy_needs_stub = True
+        elif ext.hpy_abi == 'wasm':
+            ext.define_macros.append(('HPY_UNIVERSAL_ABI', None))
+            ext._hpy_needs_stub = True
+        else:
+            assert False, ext.hpy_abi
 
     def finalize_options(self):
         self._extensions = self.distribution.ext_modules or []
@@ -241,8 +246,9 @@ class build_hpy_ext_mixin:
         return ext_filename
 
     def write_stub(self, output_dir, ext, compile=False):
+        print("XXXX", hasattr(ext, "hpy_abi"), self.distribution.hpy_abi != 'universal' , self.distribution.hpy_abi)
         if (not hasattr(ext, "hpy_abi") or
-                self.distribution.hpy_abi != 'universal'):
+                self.distribution.hpy_abi not in ('universal', 'wasm')):
             return self._base_build_ext.write_stub(
                 self, output_dir, ext, compile=compile)
         pkgs = ext._full_name.split('.')

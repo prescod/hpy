@@ -76,3 +76,6 @@ venv.bak/
 
 # Sphinx
 docs/_build/
+
+wasi-libc/
+tmp/

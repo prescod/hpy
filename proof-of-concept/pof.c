@@ -1,8 +1,12 @@
 #include "hpy.h"
 
+
+void PyUUDebug ( const char * format, ... );
+
 HPyDef_METH(do_nothing, "do_nothing", do_nothing_impl, HPyFunc_NOARGS)
 static HPy do_nothing_impl(HPyContext ctx, HPy self)
 {
+    PyUUDebug("%p", self);
     return HPy_Dup(ctx, ctx->h_None);
 }
 
@@ -58,7 +62,7 @@ static HPy Point_new_impl (HPyContext ctx, HPy cls, HPy *args,
 HPyDef_SLOT(Point_repr, Point_repr_impl, HPy_tp_repr)
 static HPy Point_repr_impl(HPyContext ctx, HPy self)
 {
-    HPy_Point *point = HPy_CAST(ctx, HPy_Point, self);
+    // HPy_Point *point = HPy_CAST(ctx, HPy_Point, self);
     return HPyUnicode_FromString(ctx, "Point(?, ?)");
     //return HPyUnicode_FromFormat("Point(%d, %d)", point->x, point->y);
 }
@@ -95,6 +99,7 @@ HPy_MODINIT(pof)
 static HPy init_pof_impl(HPyContext ctx)
 {
     HPy m, h_point_type;
+    // PyUUDebug("KIND %p %p", &moduledef.defines[0]->kind, &moduledef.defines[0]->meth);
     m = HPyModule_Create(ctx, &moduledef);
     if (HPy_IsNull(m))
         return HPy_NULL;
