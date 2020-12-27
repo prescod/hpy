@@ -1,6 +1,5 @@
-import ctypes
-
 from PyUU.API import functions
+from PyUU.PyUU_fallbacks import fallback_functions
 
 from wasmer import (
     Store,
@@ -12,8 +11,7 @@ from wasmer import (
 )
 
 from .wasm_helpers import utf_decode, split_array
-
-handle = voidptr = strptr = ptr = int
+from PyUU.PyCTypes import Ptr
 
 
 class UNUSED:
@@ -61,48 +59,17 @@ class RuntimeContext:
         p = {}
         pointer = 0
         for name, typ in spec.items():
-            subview = view[pointer : pointer + typ.size]
+            subview = view[pointer: pointer + typ.size]
             p[name] = typ.from_view(subview)
             pointer += typ.size
         return p
 
     def Ptr(self, address: int):
-        assert isinstance(address, int)
+        assert isinstance(address, int), (type(address))
         return Ptr(self, address)
 
-
-class Ptr:
-    def __init__(self, runtime_context: RuntimeContext, offset: int):
-        self.runtime_context = runtime_context
-        assert isinstance(offset, int)
-        self.offset = offset
-        self.buffer = self.runtime_context.memory.buffer
-
-    def deref_to_view(self):
-        return memoryview(self.buffer)[self.offset :]
-
-    def deref_to_str(self):
-        return self.runtime_context.decode(self.offset)
-
-    def deref_to_int(self):
-        view = self.deref_to_view()
-        i = ctypes.c_int32.from_buffer_copy(view)
-        return i.value
-
-    def deref_to_ptr(self):
-        return Ptr(self.runtime_context, self.deref_to_int())
-
-    def deref_to_struct(self, struct_type):
-        sizeof_spec = ctypes.sizeof(struct_type)
-        struct_view = self.deref_to_view()[0:sizeof_spec]
-        return struct_type.from_buffer_copy(struct_view)
-
-    def __add__(self, other: int):
-        return Ptr(self.runtime_context, self.offset + other)
-
-    def __repr__(self):
-        return f"<Ptr {hex(self.offset)}>"
-
+    def malloc(self, bytes) -> Ptr:
+        return self.Ptr(self.instance.exports.malloc(bytes))
 
 
 def initialize_module(wasm_file, store: Store = None):
@@ -123,7 +90,12 @@ def initialize_module(wasm_file, store: Store = None):
     wasi_env = wasi.StateBuilder(wasm_file).finalize()
     import_object = wasi_env.generate_import_object(store, wasi_version)
     import_object.register(
-        "env", {"memory": memory, **functions.bind(store, runtime_context)}
+        "env",
+        {
+            "memory": memory,
+            **fallback_functions.bind(store, runtime_context),
+            **functions.bind(store, runtime_context),
+        },
     )
     instance = Instance(module, import_object)
     runtime_context.bind_instance(instance)

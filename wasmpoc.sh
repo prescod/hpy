@@ -11,16 +11,17 @@
     -Wall \
     -DNDEBUG -g -fwrapv -O3 \
     -DPy_LIMITED_API \
+    -DHPY_WASM_ABI \
+    -ferror-limit=5 \
     -DHPY_UNIVERSAL_ABI \
     -IPyUU/include \
     -I/Users/pprescod/code/open_source/hpy/venv/wheel_builder_universal/lib/python3.8/site-packages/hpy/devel/include \
     -I/Users/pprescod/code/open_source/hpy/venv/wheel_builder_universal/lib/python3.8/site-packages/hpy/devel/include \
     -I/Users/pprescod/code/open_source/hpy/hpy/universal/src \
-    -I./hpy/devel/include/universal/ \
     -I./hpy/devel/include/ \
     -I/Users/pprescod/code/open_source/hpy/venv/wheel_builder_universal/include \
     -I/usr/local/Cellar/python@3.8/3.8.6_2/Frameworks/Python.framework/Versions/3.8/include/python3.8 \
-    -Wl,--allow-undefined-file=PyUU.syms \
+    -Wl,--allow-undefined-file=hpy/devel/include/wasm/API.syms \
     ./proof-of-concept/pof.c ./proof-of-concept/PyUU.c\
     hpy/devel/src/runtime/argparse.c \
     -o tmp/pof.wasm && python wasmplay.py

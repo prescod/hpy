@@ -25,14 +25,7 @@ extern HPy PyUULong_FromLong(HPyContext ctx, long value);
 
 extern HPy PyUUGetContext(void){
     HPyContext ctx = calloc(1, sizeof *ctx);
-    ctx->ctx_Module_Create = PyUUModule_Create;
-    ctx->ctx_Type_FromSpec = PyUUType_FromSpec;
-    ctx->ctx_SetAttr_s = PyUUSetAttr_s;
-    ctx->ctx_Dup = PyUUDup;
-    ctx->ctx_Add = PyUUAdd;
-    ctx->ctx_Long_AsLong = PyUULong_AsLong;
-    ctx->ctx_Long_FromLong = PyUULong_FromLong;
-
+    #include "wasm/autogen_wasm_vtable.h"
     return (HPy){(long)ctx};
 }
 

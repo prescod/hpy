@@ -3,8 +3,8 @@ from .parse import toC
 
 
 class autogen_decls_h_PyUU(AutoGenFile):
-    PATH = "hpy/devel/include/PyUU/autogen_trampolines.h"
-
+    PATH = "hpy/devel/include/wasm/autogen_wasm_trampoline.h"
+    LANGUAGE = "C"
     NO_TRAMPOLINES = set([])
 
     def generate(self):
@@ -30,15 +30,26 @@ class autogen_decls_h_PyUU(AutoGenFile):
 
 
 class autogen_linker_symbols_h_PyUU(AutoGenFile):
-    PATH = "hpy/devel/include/PyUU/pyuu.syms"
+    PATH = "hpy/devel/include/wasm/API.syms"
 
     def generate(self):
-        names = [func.name for func in self.api.functions]
+        extra_syms = [
+            "PyUUDebug__impl",
+            "PyUUType_FromSpec",
+            "PyUUSetAttr_s",
+            "PyUUDup",
+            "PyUUAdd",
+            "PyUULong_AsLong",
+            "PyUULong_FromLong",
+            "PyUULong_AsUnsignedLongLong",
+        ]
+        names = [func.name for func in self.api.functions] + extra_syms
         return "\n".join(names)
 
 
 class autogen_python_fallbacks(AutoGenFile):
-    PATH = "hpy/devel/include/PyUU/pyuu_fallbacks.py"
+    PATH = "PyUU/PyUU_fallbacks.py"
+    LANGUAGE = "Python"
 
     NO_TRAMPOLINES = set([])
 
@@ -46,10 +57,17 @@ class autogen_python_fallbacks(AutoGenFile):
         lines = []
         w = lines.append
 
-        w("""
-def API():
-    
-    """)
+        w(
+            """
+from wasmer import Type
+
+from PyUU.wasm_helpers import WasmFunctions
+
+
+fallback_functions = WasmFunctions()
+
+    """
+        )
 
         # generate stubs for all the API functions
         for func in self.api.functions:
@@ -61,22 +79,46 @@ def API():
         if func.is_varargs():
             return "# %s" % signature
 
-        def cleanup(n):
-            if n == "def":
-                return "_def"
-            return n
+        def argdecl(name):
+            if name == "def":
+                name = "_def"
+            return f"{name}: int"
 
-        argnames = [cleanup(p.name) for p in func.node.type.args.params]
+        argnames = [argdecl(p.name) for p in func.node.type.args.params]
+        argnames.insert(0, "runtime")
         lines = []
         w = lines.append
-        w(f"@API.func()  # {signature}")
+        w(f"@fallback_functions.add()  # {signature}")
         rettype = toC(func.node.type.type)
         if rettype == "void":
-            rc = "None"
+            rc = ""
+        elif "long long" in rettype:
+            return f"## not supported for now {func}"
         else:
-            rc = "int"
+            rc = " -> int"
         argnames = ", ".join(argnames)
-        w(f"def {func.name}({argnames}) -> {rc}:")
+        w(f"def {func.name}({argnames}){rc}:")
         w(f"    raise NotImplementedError({func.name})")
         w("")
+        return "\n".join(lines)
+
+
+class autogen_ctx_vtable(AutoGenFile):
+    PATH = "hpy/devel/include/wasm/autogen_wasm_vtable.h"
+    LANGUAGE = "C"
+
+    NO_TRAMPOLINES = set([])
+
+    def generate(self):
+        lines = []
+        w = lines.append
+        for func in self.api.functions:
+            name = func.name
+            if name.startswith("_"):
+                continue
+            ctx_name = name.replace("HPy_", "ctx_")
+            ctx_name = ctx_name.replace("HPy", "ctx_")
+            
+            w(f"ctx->{ctx_name} = {name};")
+
         return "\n".join(lines)

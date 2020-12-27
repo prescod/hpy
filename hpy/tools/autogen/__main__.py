@@ -20,6 +20,7 @@ from .pypy import autogen_pypy_txt
 from .pyUU_decls_and_stubs import autogen_decls_h_PyUU
 from .pyUU_decls_and_stubs import autogen_linker_symbols_h_PyUU
 from .pyUU_decls_and_stubs import autogen_python_fallbacks
+from .pyUU_decls_and_stubs import autogen_ctx_vtable
 
 
 def main():
@@ -44,7 +45,8 @@ def main():
                 autogen_pypy_txt,
                 autogen_decls_h_PyUU,
                 autogen_linker_symbols_h_PyUU,
-                autogen_python_fallbacks):
+                autogen_python_fallbacks,
+                autogen_ctx_vtable):
         cls(api).write(outdir)
 
 

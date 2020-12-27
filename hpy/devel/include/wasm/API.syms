@@ -128,3 +128,11 @@ HPyTracker_New
 HPyTracker_Add
 HPyTracker_ForgetAll
 HPyTracker_Close
+PyUUDebug__impl
+PyUUType_FromSpec
+PyUUSetAttr_s
+PyUUDup
+PyUUAdd
+PyUULong_AsLong
+PyUULong_FromLong
+PyUULong_AsUnsignedLongLong

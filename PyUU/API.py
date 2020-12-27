@@ -5,20 +5,25 @@ from ctypes import c_int32
 
 from .wasm_helpers import WasmFunctions
 from .PyCTypes import HPyModuleDef, SIZEOF_POINTER, PyMethod
-from .PyCTypes import HPyDef_Kind, SIZEOF_KIND, HPyMeth
+from .PyCTypes import HPyDef_Kind, SIZEOF_ENUM, HPyMeth
 from .PyCTypes import voidptr, HPyType_Spec, handle, strptr
+from wasmer import Value, FunctionType, Type
+
+
 functions = WasmFunctions()
 
 
 @functions.add()
-def PyUUModule_Create(runtime_context, ctx: int, module_def: int) -> int:
+def HPyModule_Create(runtime_context, ctx: int, module_def: int) -> int:
     rt = runtime_context
     module_struct = rt.Ptr(module_def).deref_to_struct(HPyModuleDef)
     name = rt.Ptr(module_struct.m_name).deref_to_str()
     doc = rt.Ptr(module_struct.m_doc).deref_to_str()
     module_defines = rt.Ptr(module_struct.defines)
     pointer_views = rt.split_array(module_defines.offset, SIZEOF_POINTER)
-    pointers_as_ints = [c_int32.from_buffer_copy(ptr).value for ptr in pointer_views]
+    pointers_as_ints = [
+        c_int32.from_buffer_copy(ptr).value for ptr in pointer_views
+    ]
 
     pointer_objs = [rt.Ptr(ptr) for ptr in pointers_as_ints]
     module = types.ModuleType(name, doc=doc)
@@ -31,7 +36,7 @@ def parse_methods(runtime_context, ctx, module, pointer_objs):
         kind = pointer.deref_to_int()
 
         if kind == HPyDef_Kind.HPyDef_Kind_Meth.value:
-            sub_struct_pointer = pointer + SIZEOF_KIND
+            sub_struct_pointer = pointer + SIZEOF_ENUM
             func = create_function(runtime_context, ctx, sub_struct_pointer)
             setattr(module, func.name, func)
         else:
@@ -56,23 +61,25 @@ def create_function(runtime_context, extension_context, sub_struct_pointer):
 
 
 @functions.add()
-def PyUUType_FromSpec(runtime_context, ctx: int, spec: voidptr, 
-                      params: voidptr) -> int:
+def HPyType_FromSpec(
+    runtime_context, ctx: int, spec: voidptr, params: voidptr
+) -> int:
     type_struct = runtime_context.Ptr(spec).deref_to_struct(HPyType_Spec)
-    nameptr = runtime_context.Ptr(type_struct.name)
-    name = nameptr.deref_to_str()
-
-    return runtime_context.new_handle(type(name, (), {}))
+    defines = type_struct.defines_as_list(ctx)
+    defines = {define.name: define for define in defines}
+    defines["__struct__"] = type_struct
+    newtype = type(type_struct.name_as_str, (), defines)
+    return runtime_context.new_handle(newtype)
 
 
 @functions.add()
-def PyUUDup(runtime_context, ctx: handle, obj: handle) -> handle:
+def HPy_Dup(runtime_context, ctx: handle, obj: handle) -> handle:
     real_obj = runtime_context.resolve_handle(obj)
     return runtime_context.new_handle(real_obj)
 
 
 @functions.add()
-def PyUUAdd(runtime_context, ctx: int, obj1: int, obj2: int) -> int:
+def HPy_Add(runtime_context, ctx: int, obj1: int, obj2: int) -> int:
     real_obj1 = runtime_context.resolve_handle(obj1)
     real_obj2 = runtime_context.resolve_handle(obj2)
     rc = real_obj1 + real_obj2
@@ -80,13 +87,13 @@ def PyUUAdd(runtime_context, ctx: int, obj1: int, obj2: int) -> int:
 
 
 @functions.add()
-def PyUULong_AsLong(runtime_context, ctx: int, num: handle) -> int:
+def HPy_Long_AsLong(runtime_context, ctx: int, num: handle) -> int:
     number = runtime_context.resolve_handle(num)
     return number
 
 
 @functions.add()
-def PyUULong_FromLong(runtime_context, ctx: int, long: int) -> handle:
+def HPy_Long_FromLong(runtime_context, ctx: int, long: int) -> handle:
     number = runtime_context.new_handle(long)
     return number
 
@@ -97,8 +104,9 @@ def PyUUDebug__impl(runtime_context, ptr: strptr):
 
 
 @functions.add()
-def PyUUSetAttr_s(runtime_context, ctx: int, obj: int, 
-                  name: strptr, value: int) -> int:
+def HPy_SetAttr_s(
+    runtime_context, ctx: int, obj: int, name: strptr, value: int
+) -> int:
     try:
         obj = runtime_context.unwrap(obj)
         name = runtime_context.decode(name)
@@ -111,5 +119,126 @@ def PyUUSetAttr_s(runtime_context, ctx: int, obj: int,
 
 
 @functions.add()
+def HPyLong_AsLong(runtime_context, ctx: int, num_handle: handle) -> int:
+    number = runtime_context.resolve_handle(num_handle)
+    return number
+
+
+@functions.add()
+def HPyLong_FromLong(runtime_context, ctx: int, num: int) -> int:
+    number = runtime_context.new_handle(num)
+    return number
+
+
+@functions.add()
+def HPy_GetItem_s(runtime, ctx: int, obj: handle, key: handle) -> handle:
+    obj = runtime.resolve_handle(obj)
+    key = runtime.decode(key)
+    return runtime.new_handle(obj[key])
+
+
+@functions.add()
+def HPy_Close(runtime, ctx: int, h: handle):
+    runtime.release_handle(h)
+
+
 def PyUULong_AsUnsignedLongLong(runtime_context, ctx: int) -> int:
-    print("PyUULong_AsUnsignedLongLong is not implemented")
+    assert 0, "PyUULong_AsUnsignedLongLong is not implemented"
+
+
+@functions.add(
+    functype=FunctionType(params=[Type.I32, Type.I32], results=[Type.I64])
+)
+def HPyLong_AsLongLong(
+    runtime_context, ctx: int, num_handle: int
+) -> Value.i64:
+    number = runtime_context.resolve_handle(num_handle)
+    return Value.i64(number)
+
+
+@functions.add(
+    functype=FunctionType(params=[Type.I32, Type.I64], results=[Type.I32])
+)
+def HPyLong_FromLongLong(
+    runtime_context, ctx: int, num_handle: int
+) -> Value.i64:
+    number = runtime_context.resolve_handle(num_handle)
+    return Value.i64(number)
+
+
+@functions.add(
+    functype=FunctionType(params=[Type.I32, Type.I32], results=[Type.I64])
+)
+def HPyLong_AsUnsignedLongLongMask(
+    runtime_context, ctx: int, num_handle: int
+) -> Value.i64:
+    assert 0, "Not yet implemented"
+
+
+@functions.add(
+    functype=FunctionType(params=[Type.I32, Type.I32], results=[Type.I64])
+)
+def HPyLong_AsUnsignedLongLong(
+    runtime_context, ctx: int, num_handle: int
+) -> Value.i64:
+    assert 0, "Not yet implemented"
+
+
+@functions.add(
+    functype=FunctionType(params=[Type.I32, Type.I64], results=[Type.I32])
+)
+def HPyLong_FromUnsignedLongLong(
+    runtime_context, ctx: int, num_handle: int
+) -> Value.i64:
+    assert 0, "Not yet implemented"
+
+
+@functions.add(
+    functype=FunctionType(params=[Type.I32, Type.I32], results=[Type.F64])
+)
+def HPyFloat_AsDouble(runtime_context, ctx: int, num_handle: int) -> Value.i64:
+    assert 0, "Not yet implemented"
+
+
+@functions.add(
+    functype=FunctionType(params=[Type.I32, Type.F64], results=[Type.I32])
+)
+def HPyFloat_FromDouble(
+    runtime_context, ctx: int, num_handle: int
+) -> Value.i64:
+    assert 0, "Not yet implemented"
+
+
+@functions.add()
+def HPyUnicode_FromString(runtime_context, ctx: int, utf8: int) -> handle:
+    data = runtime_context.decode(utf8)
+    print("PyUnicodeFromString", data)
+    return runtime_context.new_handle(data)
+
+
+# void HPyErr_SetString(HPyContext ctx, HPy h_type, const char *message)
+@functions.add()
+def HPyErr_SetString(runtime, ctx: int, h_type: int, message: int):
+    data = runtime.decode(message)
+
+    print("ERROR! Exception handling not implemented: ", data, h_type)
+
+
+class BlankObject:
+    pass
+
+
+@functions.add()
+def _HPy_New(runtime, ctx: int, h_type: handle, data: int) -> handle:
+    tp = runtime.resolve_handle(h_type)
+    assert isinstance(
+        tp, type
+    ), f"HPy_New arg 1 must be a type, not {tp}, {type(tp)}"
+    obj_in_c = runtime.malloc(tp.__struct__.basicsize)
+    obj_in_python = BlankObject()
+    obj_in_python.__class__ = tp
+    obj_in_python.__wasm_obj__ = obj_in_c
+    assert data % 4 == 0
+    view = runtime.memory.int32_view(offset=data // 4)
+    view[0] = obj_in_c.offset
+    return runtime.new_handle(obj_in_python)
