@@ -14,15 +14,6 @@ extern void PyUUDebug ( const char * format, ... )
   va_end (args);
 }
 
-// }
-extern HPy PyUUModule_Create(HPyContext ctx, HPyModuleDef *mdef);
-extern HPy PyUUType_FromSpec(HPyContext ctx, HPyType_Spec *spec, HPyType_SpecParam *params);
-extern int PyUUSetAttr_s(HPyContext ctx, HPy obj, const char *name, HPy value);
-extern HPy PyUUDup(HPyContext ctx, HPy h);
-extern HPy PyUUAdd(HPyContext ctx, HPy h1, HPy h2);
-extern long PyUULong_AsLong(HPyContext ctx, HPy h);
-extern HPy PyUULong_FromLong(HPyContext ctx, long value);
-
 extern HPy PyUUGetContext(void){
     HPyContext ctx = calloc(1, sizeof *ctx);
     #include "wasm/autogen_wasm_vtable.h"

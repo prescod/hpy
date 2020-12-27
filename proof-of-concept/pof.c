@@ -1,6 +1,5 @@
+#include <stdio.h>
 #include "hpy.h"
-
-void PyUUDebug ( const char * format, ... );
 
 HPyDef_METH(do_nothing, "do_nothing", do_nothing_impl, HPyFunc_NOARGS)
 static HPy do_nothing_impl(HPyContext ctx, HPy self)
@@ -60,9 +59,11 @@ static HPy Point_new_impl (HPyContext ctx, HPy cls, HPy *args,
 HPyDef_SLOT(Point_repr, Point_repr_impl, HPy_tp_repr)
 static HPy Point_repr_impl(HPyContext ctx, HPy self)
 {
-    // HPy_Point *point = HPy_CAST(ctx, HPy_Point, self);
-    return HPyUnicode_FromString(ctx, "Point(?, ?)");
-    //return HPyUnicode_FromFormat("Point(%d, %d)", point->x, point->y);
+    char str[80];
+
+    HPy_Point *point = HPy_CAST(ctx, HPy_Point, self);
+    sprintf(str, "<Point %d, %d>", (int)point->x, (int)point->y);
+    return HPyUnicode_FromString(ctx, str);
 }
 
 

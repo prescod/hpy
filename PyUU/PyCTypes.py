@@ -1,6 +1,8 @@
 from ctypes import c_int32, Structure, c_uint32, Union, sizeof
 from enum import Enum, auto
 from typing import NamedTuple
+import functools
+from dataclasses import dataclass
 
 
 handle = voidptr = strptr = ptr = int
@@ -77,7 +79,7 @@ def create_slot(runtime_context, extension_context, sub_struct_pointer):
     type_struct = sub_struct_pointer.deref_to_struct(HPySlot)
     kind = HPySlot_Slot(type_struct.slot)
     if kind == HPySlot_Slot.HPy_tp_new:
-        return PyMethodSelfFirstArgument(
+        return PyUnboundMethod(
             runtime_context,
             extension_context,
             "__new__",
@@ -87,7 +89,7 @@ def create_slot(runtime_context, extension_context, sub_struct_pointer):
             HPyFunc_Signature.HPyFunc_KEYWORDS.value,
         )
     elif kind == HPySlot_Slot.HPy_tp_repr:
-        return PyMethod(
+        return PyUnboundMethod(
             runtime_context,
             extension_context,
             "__repr__",
@@ -206,7 +208,8 @@ class HPyDef:
     _fields_ = [("kind", int), ("_u", HPyDefUnion)]
 
 
-class PyMethod(NamedTuple):
+@dataclass
+class PyMethod:
     runtime: object
     extension_context: int
     name: str
@@ -215,18 +218,27 @@ class PyMethod(NamedTuple):
     cpy_trampoline: int
     signature: HPyFunc_Signature
 
-    def call(self, objself, args, kwargs):
-        rt: "RuntimeContext" = self.runtime
-        if objself is None:
-            objself = rt.new_handle(None)
+    @property
+    def __name__(self):
+        return self.name
 
-            if objself:
-                assert rt.has_handle(objself)  # should be a handle
+    def call(self, self_handle, args, kwargs):
+        rt: "RuntimeContext" = self.runtime
+        if self_handle is None:
+            self_handle = rt.new_handle(None)
+
+        if self_handle:
+            assert rt.has_handle(self_handle)  # should be a handle
 
         if self.signature == HPyFunc_Signature.HPyFunc_NOARGS.value:
-            assert not args and not kwargs
+            assert not args and not kwargs, (
+                self_handle,
+                rt.resolve_handle(self_handle),
+                args,
+                kwargs,
+            )
             res = rt.instance.exports.PyUU_Call_HPyFunc_NOARGS(
-                self.extension_context, self.impl, objself
+                self.extension_context, self.impl, self_handle
             )
             return rt.resolve_handle(res)
         elif self.signature == HPyFunc_Signature.HPyFunc_O.value:
@@ -234,7 +246,7 @@ class PyMethod(NamedTuple):
             assert len(args) == 1
             arg = rt.new_handle(args[0])
             res = rt.instance.exports.PyUU_Call_HPyFunc_O(
-                self.extension_context, self.impl, objself, arg
+                self.extension_context, self.impl, self_handle, arg
             )
             rt.release_handle(arg)
             return rt.resolve_handle(res)
@@ -243,7 +255,11 @@ class PyMethod(NamedTuple):
             array, arg_handles = self.args_to_array(rt, args)
 
             res = rt.instance.exports.PyUU_Call_HPyFunc_VARARGS(
-                self.extension_context, self.impl, objself, array, len(args)
+                self.extension_context,
+                self.impl,
+                self_handle,
+                array,
+                len(args),
             )
             for arg in arg_handles:
                 rt.release_handle(arg)
@@ -251,11 +267,10 @@ class PyMethod(NamedTuple):
         elif self.signature == HPyFunc_Signature.HPyFunc_KEYWORDS.value:
             array, arg_handles = self.args_to_array(rt, args)
             kw = rt.new_handle(kwargs)
-
             res = rt.instance.exports.PyUU_Call_HPyFunc_KEYWORDS(
                 self.extension_context,
                 self.impl,
-                objself,
+                self_handle,
                 array,
                 len(args),
                 kw,
@@ -280,10 +295,30 @@ class PyMethod(NamedTuple):
         return args_to_array, arg_handles
 
 
-class PyMethodSelfFirstArgument(PyMethod):
-    def __call__(self, objself, *args, **kwargs):
-        handle_self = self.runtime.new_handle(objself)
-        return self.call(handle_self, args, kwargs)
+def PyUnboundMethod(
+    runtime: object,
+    extension_context: int,
+    name: str,
+    doc: str,
+    impl: int,
+    cpy_trampoline: int,
+    signature: HPyFunc_Signature,
+):
+    method = PyMethod(
+        runtime, extension_context, name, doc, impl, cpy_trampoline, signature
+    )
+
+    def unbound_method_wrapper(self, *args, **kwargs):
+        """An object instance cannot easily serve as an unbound method wrapper.
+        So we use a real function"""
+        objself = runtime.new_handle(self)
+        return method.call(objself, args, kwargs)
+
+    unbound_method_wrapper = functools.update_wrapper(unbound_method_wrapper, method)
+    unbound_method_wrapper.name = name
+    unbound_method_wrapper.__qualname__ = name + "(wasmproxy)"
+
+    return unbound_method_wrapper
 
 
 class Ptr:
@@ -294,7 +329,7 @@ class Ptr:
         self.buffer = self.runtime_context.memory.buffer
 
     def deref_to_view(self):
-        return memoryview(self.buffer)[self.offset :]
+        return memoryview(self.buffer)[self.offset:]
 
     def deref_to_str(self):
         return self.runtime_context.decode(self.offset)

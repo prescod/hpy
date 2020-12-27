@@ -1,9 +1,0 @@
-PyUUModule_Create
-PyUUDebug__impl
-PyUUType_FromSpec
-PyUUSetAttr_s
-PyUUDup
-PyUUAdd
-PyUULong_AsLong
-PyUULong_FromLong
-PyUULong_AsUnsignedLongLong

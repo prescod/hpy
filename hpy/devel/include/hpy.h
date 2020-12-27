@@ -5,10 +5,8 @@
 #    include "wasm/hpy.h"
 #elif HPY_UNIVERSAL_ABI
 #    include "universal/hpy.h"
-#    error "B"
 #else
 #    include "cpython/hpy.h"
-#    error "C"
 #endif
 
 #endif /* HPy_H */

@@ -75,7 +75,8 @@ def HPyType_FromSpec(
 @functions.add()
 def HPy_Dup(runtime_context, ctx: handle, obj: handle) -> handle:
     real_obj = runtime_context.resolve_handle(obj)
-    return runtime_context.new_handle(real_obj)
+    rc = runtime_context.new_handle(real_obj)
+    return rc
 
 
 @functions.add()
@@ -212,7 +213,6 @@ def HPyFloat_FromDouble(
 @functions.add()
 def HPyUnicode_FromString(runtime_context, ctx: int, utf8: int) -> handle:
     data = runtime_context.decode(utf8)
-    print("PyUnicodeFromString", data)
     return runtime_context.new_handle(data)
 
 
@@ -241,4 +241,15 @@ def _HPy_New(runtime, ctx: int, h_type: handle, data: int) -> handle:
     assert data % 4 == 0
     view = runtime.memory.int32_view(offset=data // 4)
     view[0] = obj_in_c.offset
-    return runtime.new_handle(obj_in_python)
+    new_handle = runtime.new_handle(obj_in_python)
+    return new_handle
+
+
+@functions.add()  # void *_HPy_Cast(HPyContext ctx, HPy h)
+def _HPy_Cast(runtime, ctx: int, h: handle) -> voidptr:
+    real_host_obj = runtime.resolve_handle(h)
+    assert real_host_obj   # temporary
+    if real_host_obj is None:
+        return 0
+    real_extension_object = real_host_obj.__wasm_obj__
+    return real_extension_object.offset
