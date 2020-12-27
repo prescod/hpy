@@ -14,36 +14,46 @@ extern void PyUUDebug ( const char * format, ... )
   va_end (args);
 }
 
-extern int PyUUModule_Create__impl(unsigned int ctx, const char *name, const char *doc, HPyDef *module_defines[], int sizeof_pointer, int sizeof_kind);
-HPy PyUUModule_Create(HPyContext ctx, HPyModuleDef *mdef){
-    PyUUDebug("FIRST DEFINITION: %p, NAME POINTER %p", &mdef->defines[0]->kind, mdef->defines[0]->meth.name);
-    return (HPy){PyUUModule_Create__impl((int)ctx, mdef->m_name, mdef->m_doc, mdef->defines, sizeof(HPyDef *), sizeof(HPyDef_Kind))};
-}
-
+// }
+extern HPy PyUUModule_Create(HPyContext ctx, HPyModuleDef *mdef);
 extern HPy PyUUType_FromSpec(HPyContext ctx, HPyType_Spec *spec, HPyType_SpecParam *params);
-
 extern int PyUUSetAttr_s(HPyContext ctx, HPy obj, const char *name, HPy value);
+extern HPy PyUUDup(HPyContext ctx, HPy h);
+extern HPy PyUUAdd(HPyContext ctx, HPy h1, HPy h2);
+extern long PyUULong_AsLong(HPyContext ctx, HPy h);
+extern HPy PyUULong_FromLong(HPyContext ctx, long value);
 
 extern HPy PyUUGetContext(void){
     HPyContext ctx = calloc(1, sizeof *ctx);
     ctx->ctx_Module_Create = PyUUModule_Create;
     ctx->ctx_Type_FromSpec = PyUUType_FromSpec;
     ctx->ctx_SetAttr_s = PyUUSetAttr_s;
+    ctx->ctx_Dup = PyUUDup;
+    ctx->ctx_Add = PyUUAdd;
+    ctx->ctx_Long_AsLong = PyUULong_AsLong;
+    ctx->ctx_Long_FromLong = PyUULong_FromLong;
+
     return (HPy){(long)ctx};
 }
 
-extern int PyUU_Call_PyMethod(int addr, int args, int kwargs){
-    HPyMeth *method = (HPyMeth *)addr;
-    PyUUDebug("Mocking call to func %s with %p and %p ", method->name, args, kwargs);
-    // method->impl()
-    return 10;
-}
 
+// Exception handling???
 extern void test_print() {
-    PyUUDebug("AAAA, BBBB, %d %d %d %ld", LONG_BIT, SIZEOF_LONG, sizeof(long), LONG_MAX );
+    PyUUDebug("Print worked");
 }
 
-// extern PyUUMethod_Call(HPy *function, HPy *args, HPy *kwargs){
-//     PyUUDebug("%p %p %p", function, args, kwargs);
-// }
+extern HPy PyUU_Call_HPyFunc_NOARGS(HPyContext ctx, HPyFunc_noargs func, HPy self){
+    return func(ctx, self);
+}
 
+extern HPy PyUU_Call_HPyFunc_O(HPyContext ctx, HPyFunc_o func, HPy self, HPy obj){
+    return func(ctx, self, obj);
+}
+
+extern HPy PyUU_Call_HPyFunc_VARARGS(HPyContext ctx, HPyFunc_varargs func, HPy self, HPy args[], int nargs){
+    return func(ctx, self, args, nargs);
+}
+
+extern HPy PyUU_Call_HPyFunc_KEYWORDS(HPyContext ctx, HPyFunc_keywords func, HPy self, HPy *args, HPy_ssize_t nargs, HPy kw){
+    return func(ctx, self, args, nargs, kw);
+}

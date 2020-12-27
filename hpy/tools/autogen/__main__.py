@@ -17,6 +17,10 @@ from .hpyfunc import autogen_ctx_call_i
 from .hpyfunc import autogen_cpython_hpyfunc_trampoline_h
 from .hpyslot import autogen_hpyslot_h
 from .pypy import autogen_pypy_txt
+from .pyUU_decls_and_stubs import autogen_decls_h_PyUU
+from .pyUU_decls_and_stubs import autogen_linker_symbols_h_PyUU
+from .pyUU_decls_and_stubs import autogen_python_fallbacks
+
 
 def main():
     if len(sys.argv) != 2:
@@ -37,7 +41,10 @@ def main():
                 autogen_ctx_call_i,
                 autogen_cpython_hpyfunc_trampoline_h,
                 autogen_hpyslot_h,
-                autogen_pypy_txt):
+                autogen_pypy_txt,
+                autogen_decls_h_PyUU,
+                autogen_linker_symbols_h_PyUU,
+                autogen_python_fallbacks):
         cls(api).write(outdir)
 
 

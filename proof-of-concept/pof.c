@@ -1,12 +1,10 @@
 #include "hpy.h"
 
-
 void PyUUDebug ( const char * format, ... );
 
 HPyDef_METH(do_nothing, "do_nothing", do_nothing_impl, HPyFunc_NOARGS)
 static HPy do_nothing_impl(HPyContext ctx, HPy self)
 {
-    PyUUDebug("%p", self);
     return HPy_Dup(ctx, ctx->h_None);
 }
 
@@ -99,7 +97,6 @@ HPy_MODINIT(pof)
 static HPy init_pof_impl(HPyContext ctx)
 {
     HPy m, h_point_type;
-    // PyUUDebug("KIND %p %p", &moduledef.defines[0]->kind, &moduledef.defines[0]->meth);
     m = HPyModule_Create(ctx, &moduledef);
     if (HPy_IsNull(m))
         return HPy_NULL;

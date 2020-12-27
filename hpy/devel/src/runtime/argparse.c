@@ -147,6 +147,9 @@ set_error(HPyContext ctx, HPy exc, const char *err_fmt, const char *msg) {
 }
 
 
+void PyUUDebug ( const char * format, ... );
+
+
 static int
 parse_item(HPyContext ctx, HPyTracker *ht, HPy current_arg, int current_arg_tmp, const char **fmt, va_list *vl, const char *err_fmt)
 {
@@ -246,6 +249,7 @@ parse_item(HPyContext ctx, HPyTracker *ht, HPy current_arg, int current_arg_tmp,
     }
 
     case 'l': {
+        PyUUDebug("LLll");
         long *output = va_arg(*vl, long *);
         _BREAK_IF_OPTIONAL(current_arg);
         long value = HPyLong_AsLong(ctx, current_arg);
@@ -564,16 +568,20 @@ HPyArg_ParseKeywords(HPyContext ctx, HPyTracker *ht, HPy *args, HPy_ssize_t narg
         }
         nkw++;
     }
+    PyUUDebug("AABB");
 
     if (ht != NULL) {
+        PyUUDebug("EEFF");
         *ht = HPyTracker_New(ctx, 0);
         if (HPy_IsNull(*ht)) {
             return 0;
         }
     }
+    PyUUDebug("CCDD");
 
     va_list vl;
     va_start(vl, keywords);
+    PyUUDebug("GGHH");
 
     while (fmt1 != fmt_end) {
         if (*fmt1 == '|') {

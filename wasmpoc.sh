@@ -2,8 +2,9 @@
 # export PYTHONPATH=../wasmapy
 /usr/local/Cellar/llvm@9/9.0.1_2/bin/clang \
     --target=wasm32-unknown-wasi \
-    --sysroot wasi-libc/ \
+    --sysroot /Users/pprescod/code/open_source/wasi-libc/sysroot \
     -nostartfiles \
+    -Wl,--export-table \
     -Wl,--no-entry \
     -Wl,--export-all \
     -fno-common \
@@ -21,7 +22,7 @@
     -I/usr/local/Cellar/python@3.8/3.8.6_2/Frameworks/Python.framework/Versions/3.8/include/python3.8 \
     -Wl,--allow-undefined-file=PyUU.syms \
     ./proof-of-concept/pof.c ./proof-of-concept/PyUU.c\
-    hpy/devel/src/runtime/argparse.c\
+    hpy/devel/src/runtime/argparse.c \
     -o tmp/pof.wasm && python wasmplay.py
 # clang -Wno-unused-result -Wsign-compare -Wunreachable-code \
 #     --target=wasm32-unknown-wasi \
